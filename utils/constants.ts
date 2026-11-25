@@ -44,6 +44,11 @@ export const INTERNAL_API = {
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/auth/login',
+  ORDERS: '/pedidos',
+  PURCHASES: '/compras',
+  STOCK: '/stock',
+  LOADING_POINTS: '/lugares-cargue',
+  TRIPS: '/viajes',
 } as const;
 
 export const PAGINATION = { DEFAULT_PAGE_SIZE: 20 } as const;
