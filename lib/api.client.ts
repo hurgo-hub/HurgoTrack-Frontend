@@ -5,7 +5,6 @@ import { getCookie } from '@/utils/helpers';
 export interface ApiRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
   skipAuthRefresh?: boolean;
-  _might404?: boolean;
 }
 
 /**
@@ -28,11 +27,7 @@ apiClient.interceptors.request.use((config: ApiRequestConfig) => {
     config.headers['X-CSRFToken'] = csrfToken;
   }
 
-  // Peticiones que pueden responder 404 sin que sea un error del sistema
-  const might404 = config.url?.includes('/linkPayment/') || config.url?.includes('/notificationPush/');
-  if (might404) config._might404 = true;
-
-  if (isDev && !might404) {
+  if (isDev) {
     console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
   }
 
@@ -71,8 +66,7 @@ apiClient.interceptors.response.use(
       }
     }
 
-    const isExpected404 = originalRequest?._might404 && error.response?.status === 404;
-    if (isDev && !isExpected404) {
+    if (isDev) {
       console.error('[API Error]', {
         status: error.response?.status,
         data: error.response?.data,

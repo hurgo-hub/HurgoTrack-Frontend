@@ -5,9 +5,8 @@ const nextConfig: NextConfig = {
   compress: true,
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
-  experimental: {
-    optimizePackageImports: ["lucide-react", "date-fns"],
-  },
+  // ioredis solo corre en el servidor de Next
+  serverExternalPackages: ["ioredis"],
 };
 
 export default nextConfig;

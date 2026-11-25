@@ -1,16 +1,19 @@
 # HurgoTrack · Frontend
 
-Next.js 16 (App Router) + React 19 + Tailwind CSS 4. Base tomada de FigaPay: solo estructura, sin lógica de negocio.
+Next.js 16 (App Router) + React 19 + Tailwind CSS 4. Solo estructura y configuración de servicios: sin diseño ni lógica de negocio.
 
 ```
-app/            Rutas. (app)/ privadas (dashboard, trips, orders, fleet, drivers, locations), auth/login
+app/
+  (app)/        Rutas privadas (layout con RequireAuth)
+  auth/         Rutas públicas de autenticación
   api/health    Estado de Redis y del backend
   api/steps/    Estado de flujos por pasos en Redis (GET/PUT/DELETE /api/steps/<key>)
-components/     UI/ (botones, campos, modal…), layout/, auth/ (guards), steps/ (Stepper)
+components/     ui/, layout/, shared/, auth/ (guards)
 context/        AuthProvider (sesión con cookies JWT httpOnly)
-hooks/          useAuth, usePermissions, useStepper, useWorkflow, useToast…
+hooks/          useAuth, usePermissions, useStepper, useWorkflow, useDebouncedValue, useStorageValue
 lib/            api.client (axios + refresh), redis, cache, stepsStore (solo servidor)
-services/       auth, workflow (sync / async / RunStepSync), steps (cliente de /api/steps)
+services/       auth, workflow (sync / async / RunStepSync), steps (cliente de /api/steps), generics/
+types/  utils/
 ```
 
 ## Backend
@@ -23,7 +26,7 @@ negocio es un workflow: `runWorkflow('trips.list', { data })` → `POST /api/wor
 Solo desde el servidor de Next (`REDIS_URL`, `REDIS_KEY_PREFIX`). `useStepper({ persistKey })` guarda/retoma el
 flujo; `lib/cache.ts` ofrece `remember()` para cachear respuestas.
 
-## Desarrollo
+## Desarrollo (desde la terminal de Ubuntu/WSL)
 
 ```bash
 cp .env.example .env.local

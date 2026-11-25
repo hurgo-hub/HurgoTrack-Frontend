@@ -66,10 +66,3 @@ export interface StepperState<TData = Record<string, unknown>> {
   executionId?: number | null;
   updatedAt?: string;
 }
-
-// UI
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
-export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'brand';
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
-export type ButtonSize = 'sm' | 'md' | 'lg';
-export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';

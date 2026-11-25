@@ -71,7 +71,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       await authService.login(data);
       setUser(await authService.getCurrentUser());
       setIsLoading(false);
-      router.push(ROUTES.DASHBOARD);
+      router.push(ROUTES.HOME);
     } catch (err) {
       setError(extractErrorMessage(err));
       setIsLoading(false);
