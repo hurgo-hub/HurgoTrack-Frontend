@@ -1,4 +1,11 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://hurgotrackback.devloop.com.co/api';
+/**
+ * Base de las peticiones del navegador. Por defecto `/backend`, que Next reenvía al backend
+ * (ver `rewrites` en next.config.ts y BACKEND_URL): mismo origen, sin CORS y cookies propias.
+ */
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/backend';
+
+/** URL real del backend, para llamadas desde el servidor de Next (route handlers) */
+export const BACKEND_URL = process.env.BACKEND_URL || 'https://hurgotrackback.devloop.com.co/api';
 
 /** Auth del motor (cookies JWT httpOnly: access_token / refresh_token) */
 export const AUTH_ENDPOINTS = {

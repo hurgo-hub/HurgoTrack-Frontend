@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+/*
+ * Hurgo Track · marca (diseno-marca/BRIEF.md)
+ * Solo azules: oscuro #0b2545, medio #1d4e89, claro #b7d0ee. Blanco o negro para contraste.
+ * Sin degradados ni efectos. Tipografía: Sora.
+ */
+@theme {
+  --color-brand-900: #0b2545;
+  --color-brand-700: #1d4e89;
+  --color-brand-200: #b7d0ee;
+
+  --font-sans: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-white font-sans text-brand-900 antialiased;
+  }
+}

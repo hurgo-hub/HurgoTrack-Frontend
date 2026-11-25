@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRedis } from '@/lib/redis';
-import { API_BASE_URL } from '@/utils/constants';
+import { BACKEND_URL } from '@/utils/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +23,7 @@ export async function GET() {
       await redis.ping();
     }),
     check(async () => {
-      const res = await fetch(`${API_BASE_URL}/auth/session/status/`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+      const res = await fetch(`${BACKEND_URL}/auth/session/status/`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
       // 401 = el backend responde (solo falta sesión)
       if (res.status >= 500) throw new Error(`HTTP ${res.status}`);
     }),

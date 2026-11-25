@@ -18,7 +18,7 @@ types/  utils/
 
 ## Backend
 
-`NEXT_PUBLIC_API_URL` (por defecto `https://hurgotrackback.devloop.com.co/api`). Auth por cookies; cada acción de
+`BACKEND_URL` (por defecto `https://hurgotrackback.devloop.com.co/api`). El navegador llama a `/backend/*` y Next lo reenvía al backend (sin CORS). Auth por cookies; cada acción de
 negocio es un workflow: `runWorkflow('trips.list', { data })` → `POST /api/workflows/sync/trips.list/`.
 
 ## Redis
