@@ -4,7 +4,9 @@ import type { WorkflowPayload, WorkflowResponse } from '@/types';
 
 function unwrap<T>(name: string, body: WorkflowResponse<T>): T {
   if (!body.success) {
-    throw new Error(body.details?.reason || `El workflow ${name} no se pudo ejecutar`);
+    // El motor antepone "module <step> failed: " al mensaje de negocio
+    const reason = (body.details?.reason || '').replace(/^module \S+ failed: /, '');
+    throw new Error(reason || `El workflow ${name} no se pudo ejecutar`);
   }
   return body.details.context?.results as T;
 }
@@ -12,6 +14,14 @@ function unwrap<T>(name: string, body: WorkflowResponse<T>): T {
 /** `POST /workflows/sync/<name>/`: ejecuta el workflow y devuelve `context.results` */
 export async function runWorkflow<T = unknown>(name: string, payload: WorkflowPayload = {}): Promise<T> {
   const { data } = await apiClient.post<WorkflowResponse<T>>(`${WORKFLOW_ENDPOINTS.SYNC}${name}/`, payload);
+  return unwrap(name, data);
+}
+
+/** Igual que runWorkflow pero multipart (adjuntos en el campo `files`) */
+export async function runWorkflowForm<T = unknown>(name: string, form: FormData): Promise<T> {
+  const { data } = await apiClient.post<WorkflowResponse<T>>(`${WORKFLOW_ENDPOINTS.SYNC}${name}/`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return unwrap(name, data);
 }
 
