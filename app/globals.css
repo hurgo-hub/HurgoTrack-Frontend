@@ -1,0 +1,354 @@
+@import "tailwindcss";
+
+/*
+ * HurgoTrack · tokens de diseño (base tomada de FigaPay)
+ * Primario #5A13F2 · oscuro #430F8C · acento #973DF2 · fondos #F3E8FF / #EDE9FE
+ * Contrastes (WCAG) medidos sobre la superficie donde se usan:
+ *   claro  ink 16.9 · ink-2 7.5 · ink-3 5.1 (4.7 sobre surface-2) · brand-ink 7.5 · blanco/brand 7.5
+ *   oscuro ink 15.8 · ink-2 9.0 · ink-3 6.1 · brand-ink 8.7 · blanco/brand 7.5
+ * Los tonos del logo (#430F8C y #BC85F2) son decorativos: nunca para texto pequeño.
+ */
+
+:root {
+  --canvas: #f9fafb;
+  --surface: #ffffff;
+  --surface-2: #f7f3fe;
+  --line: #ede4fb;
+  --line-strong: #cfc4e3;
+  --ink: #1a1530;
+  --ink-2: #4a5568;
+  --ink-3: #646d81;
+
+  --brand: #5a13f2;
+  --brand-hover: #430f8c;
+  --brand-ink: #5a13f2;
+  --brand-soft: #f3e8ff;
+  --brand-vivid: #973df2;
+
+  /* Tonos del logo FPAY: solo decorativos */
+  --logo-dark: #430f8c;
+  --logo-light: #bc85f2;
+
+  --success: #0f7a4a;
+  --success-soft: #e6f5ee;
+  --warning: #8a5a00;
+  --warning-soft: #fff4db;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --info: #1d5fad;
+  --info-soft: #e8f1fc;
+
+  --overlay: rgb(26 21 48 / 0.5);
+  --shadow-color: 265deg 40% 35%;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #110d1a;
+    --surface: #191426;
+    --surface-2: #221c33;
+    --line: #2f2745;
+    --line-strong: #463c61;
+    --ink: #f2eefa;
+    --ink-2: #bdb4d1;
+    --ink-3: #9c93b2;
+
+    --brand: #5a13f2;
+    --brand-hover: #6d2bf5;
+    --brand-ink: #c9a6f7;
+    --brand-soft: #2a1a4a;
+    --brand-vivid: #b794f6;
+
+    --success: #5fd49a;
+    --success-soft: #14281f;
+    --warning: #f2c46b;
+    --warning-soft: #2d2412;
+    --danger: #ff8a80;
+    --danger-soft: #301615;
+    --info: #7db4f5;
+    --info-soft: #14213a;
+
+    --overlay: rgb(0 0 0 / 0.6);
+    --shadow-color: 300deg 30% 2%;
+
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-vivid: var(--brand-vivid);
+  --color-logo-dark: var(--logo-dark);
+  --color-logo-light: var(--logo-light);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-overlay: var(--overlay);
+
+  --font-sans: var(--font-mona), ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Candide", var(--font-mona), Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  --shadow-card: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 2px 8px -2px hsl(var(--shadow-color) / 0.08);
+  --shadow-raised: 0 2px 4px hsl(var(--shadow-color) / 0.06), 0 12px 32px -8px hsl(var(--shadow-color) / 0.18);
+  --shadow-overlay: 0 4px 8px hsl(var(--shadow-color) / 0.08), 0 24px 64px -12px hsl(var(--shadow-color) / 0.32);
+
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: linear-gradient(135deg, var(--canvas) 0%, color-mix(in oklab, var(--brand-soft) 70%, var(--canvas)) 100%) fixed;
+    min-height: 100dvh;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+    font-family: var(--font-display);
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--brand-vivid) 28%, transparent);
+    color: var(--ink);
+  }
+
+  input, textarea, select {
+    caret-color: var(--brand);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  a {
+    text-underline-offset: 3px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+@layer components {
+  /* Respuesta táctil de cualquier elemento presionable */
+  .press {
+    transition: transform 140ms var(--ease-out-strong), background-color 160ms ease, color 160ms ease,
+      border-color 160ms ease, box-shadow 160ms ease;
+  }
+  .press:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  /* Montos, IDs y cifras alineadas */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .field {
+    width: 100%;
+    min-height: 2.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
+    color: var(--ink);
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+  .field::placeholder {
+    color: var(--ink-3);
+  }
+  .field:hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--line-strong) 60%, var(--ink-3));
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 22%, transparent);
+  }
+  .field[aria-invalid="true"] {
+    border-color: var(--danger);
+  }
+  .field:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .field-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* Entrada de elementos que aparecen (modales, toasts, popovers) */
+  .enter-pop {
+    transition: opacity 200ms var(--ease-out-strong), transform 200ms var(--ease-out-strong);
+    @starting-style {
+      opacity: 0;
+      transform: scale(0.96) translateY(4px);
+    }
+  }
+  .enter-fade {
+    transition: opacity 200ms ease;
+    @starting-style {
+      opacity: 0;
+    }
+  }
+  .enter-drawer {
+    transition: transform 320ms var(--ease-drawer);
+    @starting-style {
+      transform: translateX(-100%);
+    }
+  }
+
+  /* Aparición escalonada de listas en la primera carga */
+  .stagger > * {
+    animation: rise 320ms var(--ease-out-strong) both;
+  }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(n + 6) { animation-delay: 200ms; }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 0%, var(--line) 50%, var(--surface-2) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: 0.5rem;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lift {
+    transition: transform 200ms var(--ease-out-strong), box-shadow 200ms var(--ease-out-strong), border-color 160ms ease;
+  }
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-raised);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  .press:active:not(:disabled),
+  .lift:hover {
+    transform: none;
+  }
+  .enter-pop,
+  .enter-drawer {
+    transition: opacity 160ms ease;
+    @starting-style {
+      opacity: 0;
+      transform: none;
+    }
+  }
+}
+
+/*
+ * View Transitions (React <ViewTransition>):
+ * crossfade con blur entre pasos y morph del elemento compartido.
+ */
+::view-transition-old(.vt-step) {
+  animation: vt-blur-out 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+::view-transition-new(.vt-step) {
+  animation: vt-blur-in 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+::view-transition-group(.vt-morph) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
+}
+::view-transition-image-pair(.vt-morph) {
+  animation: vt-morph-blur 320ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+@keyframes vt-blur-out {
+  to {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+@keyframes vt-blur-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+@keyframes vt-morph-blur {
+  50% {
+    filter: blur(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*) {
+    animation-duration: 120ms !important;
+    filter: none !important;
+  }
+}
+
