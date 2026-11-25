@@ -4,6 +4,8 @@ import type { NextConfig } from "next";
 const BACKEND_URL = (process.env.BACKEND_URL ?? "https://hurgotrackback.devloop.com.co/api").replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
+  // Imagen Docker liviana: .next/standalone trae server.js y solo las dependencias usadas
+  output: "standalone",
   reactCompiler: true,
   compress: true,
   productionBrowserSourceMaps: false,

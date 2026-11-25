@@ -1,0 +1,26 @@
+# Frontend de Hurgo Track en el VPS.
+#
+# Se une a la red del backend (proyecto "hurgotrack"): así el Caddy del backend
+# le entrega hurgotrackfront.devloop.com.co a este contenedor y Next usa el mismo
+# Redis. No publica puertos: solo Caddy da la cara a internet.
+# El .env de esta carpeta (no va a git) lo lee docker compose para el build y el contenedor.
+
+name: hurgotrack-frontend
+
+services:
+  frontend:
+    image: hurgotrack-frontend:latest
+    build:
+      context: .
+      args:
+        BACKEND_URL: ${BACKEND_URL:-https://hurgotrackback.devloop.com.co/api}
+    env_file: .env
+    restart: unless-stopped
+    networks:
+      default:
+        aliases: [frontend]
+
+networks:
+  default:
+    name: hurgotrack_default
+    external: true
