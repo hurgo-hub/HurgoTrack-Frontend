@@ -17,6 +17,7 @@ export default function Home() {
       [ROUTES.ORDERS, 'orders.view_m_order'],
       [ROUTES.PURCHASES, 'stock.view_m_purchase_request'],
       [ROUTES.TRIPS, 'trips.view_m_trip'],
+      [ROUTES.MY_COMPANY, 'companies.manage_company'],
     ].find(([, perm]) => hasPermission(user, perm));
     if (first) router.replace(first[0]);
   }, [user, router]);

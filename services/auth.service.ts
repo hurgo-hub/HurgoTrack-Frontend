@@ -2,7 +2,18 @@ import { apiClient } from '@/lib/api.client';
 import { AUTH_ENDPOINTS } from '@/utils/constants';
 import type { LoginFormData, User } from '@/types';
 
+export interface IdentifyResult {
+  /** Marca de la empresa del usuario; null si no aplica (la respuesta no revela si el usuario existe) */
+  company: { name: string; color: string | null; slogan: string | null } | null;
+}
+
 export const authService = {
+  /** Paso 1 del login: respuesta neutra con la marca de la empresa del usuario */
+  identify: async (username: string): Promise<IdentifyResult> => {
+    const response = await apiClient.post(AUTH_ENDPOINTS.IDENTIFY, { username }, { skipAuthRefresh: true } as object);
+    return response.data;
+  },
+
   /** Inicia sesión; el backend deja las cookies JWT */
   login: async (data: LoginFormData) => {
     const response = await apiClient.post(AUTH_ENDPOINTS.LOGIN, data);

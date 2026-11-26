@@ -10,9 +10,10 @@ import { useAction, useWorkflowData } from '@/hooks/useWorkflowData';
 import { runWorkflow } from '@/services/workflow.service';
 import { ROUTES } from '@/utils/constants';
 
+/** Las líneas vienen de varias empresas y sus ids se repiten: se identifican con empresa + id. */
 type Pending = {
-  id: number; order_code: string; company_id: number; item: string; recipient: string; address: string;
-  qty_pending: string; loading_address: string | null; uses_stock: boolean;
+  id: number; order_code: string; company_id: number; company: string; item: string; address: string;
+  qty_pending: string; loading_address: string | null; uses_stock: boolean; stock_available: string | null;
 };
 type TripRow = { id: number; code: string; state: string; create_date: string };
 
@@ -51,15 +52,16 @@ export default function TripsPage() {
 function BuildTrip() {
   const router = useRouter();
   const pending = useWorkflowData<Pending[]>('orders.pending_lines');
-  const [qty, setQty] = useState<Record<number, string>>({});
+  const [qty, setQty] = useState<Record<string, string>>({});
   const action = useAction();
-  const selected = Object.entries(qty).filter(([, q]) => Number(q) > 0);
+  const rowKey = (p: Pending) => `${p.company_id}-${p.id}`;
+  const selected = (pending.data ?? []).filter((p) => Number(qty[rowKey(p)]) > 0);
+  const companies = new Set(selected.map((p) => p.company_id));
 
   const build = async () => {
-    const first = pending.data?.find((p) => String(p.id) === selected[0][0]);
     const trip = await action.run(() => runWorkflow<{ id: number }>('trips.build', {
-      company_id: first?.company_id,
-      allocations: selected.map(([id, q]) => ({ order_line_id: Number(id), qty: q })),
+      company_id: selected[0].company_id,
+      allocations: selected.map((p) => ({ order_line_id: p.id, qty: qty[rowKey(p)] })),
     }));
     if (trip) router.push(`${ROUTES.TRIPS}/${trip.id}`);
   };
@@ -67,24 +69,26 @@ function BuildTrip() {
   return (
     <Card title="Armar viaje" actions={<span className="text-sm text-brand-700">Escribe cuánto cargar de cada línea</span>}>
       <Message error={pending.error} />
-      <Table head={['Pedido', 'Producto', 'Destino', 'Cargue', 'Pendiente', 'Cargar']} empty="No hay pedidos confirmados con pendientes">
+      <Table head={['Empresa', 'Pedido', 'Producto', 'Destino', 'Cargue', 'Pendiente', 'Stock disponible', 'Cargar']} empty="No hay pedidos confirmados con pendientes">
         {pending.data?.map((p) => (
-          <tr key={p.id}>
+          <tr key={rowKey(p)}>
+            <Td>{p.company}</Td>
             <Td>{p.order_code}</Td>
             <Td>{p.item}{p.uses_stock && <> <Badge>stock</Badge></>}</Td>
-            <Td>{p.recipient} · {p.address}</Td>
+            <Td>{p.address}</Td>
             <Td>{p.loading_address ?? '—'}</Td>
             <Td>{p.qty_pending}</Td>
+            <Td>{p.uses_stock ? <b>{p.stock_available}</b> : '—'}</Td>
             <Td>
-              <Input type="number" min="0" step="any" className="w-24" value={qty[p.id] ?? ''}
-                onChange={(e) => setQty({ ...qty, [p.id]: e.target.value })} />
+              <Input type="number" min="0" step="any" className="w-24" value={qty[rowKey(p)] ?? ''}
+                onChange={(e) => setQty({ ...qty, [rowKey(p)]: e.target.value })} />
             </Td>
           </tr>
         ))}
       </Table>
       <div className="mt-3 flex items-center gap-3">
-        <Button onClick={build} disabled={!selected.length || action.busy}>Armar viaje</Button>
-        <Message error={action.error} />
+        <Button onClick={build} disabled={!selected.length || companies.size > 1 || action.busy}>Armar viaje</Button>
+        <Message error={action.error || (companies.size > 1 ? 'Un viaje lleva pedidos de una sola empresa.' : '')} />
       </div>
     </Card>
   );

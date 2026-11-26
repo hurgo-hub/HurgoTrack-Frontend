@@ -7,16 +7,17 @@ import { Badge, Button, Card, Field, Message, PageTitle, Select, Table, Td } fro
 import { useAuth } from '@/hooks/auth/useAuth';
 import { hasPermission } from '@/hooks/auth/usePermissions';
 import { useAction, useWorkflowData } from '@/hooks/useWorkflowData';
+import { DocumentList, type DocRow } from '@/components/shared/DocumentList';
 import { runWorkflow, runWorkflowForm } from '@/services/workflow.service';
 import { ROUTES } from '@/utils/constants';
 
 type Stop = {
   id: number; sequence: number; state: string; state_display: string; qty: string;
-  recipient: { name: string }; address: { name: string; address: string; location: string };
+  address: { name: string; address: string; location: string };
   items: { order_line_trip_id: number; order_code: string; item: string; qty: string }[];
 };
 type Trip = {
-  id: number; code: string; state: string; state_display: string; company: { name: string }; origin_address: string;
+  id: number; code: string; state: string; state_display: string; company: { name: string }; origin_address: string | null;
   vehicle: string | null; driver: { name: string } | null; lines: Stop[];
   events: { id: number; name: string; description: string; event_date: string }[];
 };
@@ -36,7 +37,7 @@ export default function TripDetailPage() {
       <Message error={trip.error} />
       {t && (
         <>
-          <PageTitle title={`Viaje ${t.code}`} description={`${t.company.name} · carga en ${t.origin_address}`} />
+          <PageTitle title={`Viaje ${t.code}`} description={`${t.company.name} · carga en ${t.origin_address ?? 'sin definir'}`} />
           <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
             <div className="space-y-4">
               <Card title="Paradas" actions={<Badge>{t.state_display}</Badge>}>
@@ -47,7 +48,7 @@ export default function TripDetailPage() {
                   {t.lines.map((s) => (
                     <tr key={s.id}>
                       <Td>{s.sequence}</Td>
-                      <Td>{s.recipient.name}<br /><span className="text-brand-700">{s.address.address} · {s.address.location}</span></Td>
+                      <Td>{s.address.name}<br /><span className="text-brand-700">{s.address.address} · {s.address.location}</span></Td>
                       <Td>{s.items.map((i) => <div key={i.order_line_trip_id}>{i.item} × {i.qty} <span className="text-brand-700">({i.order_code})</span></div>)}</Td>
                       <Td><Badge>{s.state_display}</Badge></Td>
                       <Td>{isDriver && ['in_route', 'delivering'].includes(s.state) && <Deliver tripId={t.id} stop={s} onDone={trip.reload} />}</Td>
@@ -55,6 +56,7 @@ export default function TripDetailPage() {
                   ))}
                 </Table>
               </Card>
+              <TripDocuments trip={t} canUpload={(isDispatch || isDriver) && !['closed', 'cancelled'].includes(t.state)} />
               <Card title="Historial">
                 <ul className="space-y-1 text-sm">
                   {t.events.map((e) => (
@@ -141,5 +143,45 @@ function Deliver({ tripId, stop, onDone }: { tripId: number; stop: Stop; onDone:
       <Button onClick={deliver} disabled={!file || action.busy}>Entregar</Button>
       <Message error={action.error} />
     </div>
+  );
+}
+
+type TripDocs = { loading: DocRow[]; delivery: { trip_line_id: number; sequence: number; documents: DocRow[] }[] };
+
+/** Documentos de cargue (antes de salir) y de entrega por parada (antes de entregar) */
+function TripDocuments({ trip, canUpload }: { trip: Trip; canUpload: boolean }) {
+  const docs = useWorkflowData<TripDocs>('trips.documents', { trip_id: trip.id });
+
+  const upload = (stopId?: number) => async (doc: DocRow, file: File) => {
+    const form = new FormData();
+    form.append('trip_id', String(trip.id));
+    form.append('document_key', doc.key ?? '');
+    if (stopId) form.append('trip_line_id', String(stopId));
+    form.append('files', file);
+    await runWorkflowForm('trips.attach', form);
+    docs.reload();
+  };
+
+  const d = docs.data;
+  const hasDelivery = d?.delivery.some((s) => s.documents.length);
+  if (!docs.loading && !docs.error && !d?.loading.length && !hasDelivery) return null;
+  return (
+    <Card title="Documentos del viaje">
+      <Message error={docs.error} />
+      {d && (
+        <div className="space-y-4">
+          <div>
+            <p className="mb-1 text-sm font-semibold">Cargue (antes de salir)</p>
+            <DocumentList docs={d.loading} canUpload={canUpload} onUpload={upload()} />
+          </div>
+          {hasDelivery && d.delivery.map((s) => (
+            <div key={s.trip_line_id}>
+              <p className="mb-1 text-sm font-semibold">Entrega · parada {s.sequence}</p>
+              <DocumentList docs={s.documents} canUpload={canUpload} onUpload={upload(s.trip_line_id)} />
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }

@@ -8,7 +8,7 @@ import { useAction, useWorkflowData } from '@/hooks/useWorkflowData';
 import { runWorkflow } from '@/services/workflow.service';
 
 type Request = {
-  id: number; code: string; state: string; state_display: string; company: { name: string }; create_date: string;
+  id: number; code: string; state: string; state_display: string; company: { id: number; name: string }; create_date: string;
   lines: { id: number; item: string; qty: string; order_code: string | null }[];
   odoo_purchases: { id: number; name: string }[];
 };
@@ -23,7 +23,7 @@ export default function PurchasesPage() {
       <Message error={requests.error} />
       <div className="space-y-3">
         {requests.data?.length === 0 && <Card><p className="text-sm text-brand-700">No hay solicitudes.</p></Card>}
-        {requests.data?.map((r) => <RequestCard key={r.id} request={r} onDone={requests.reload} />)}
+        {requests.data?.map((r) => <RequestCard key={`${r.company.id}-${r.id}`} request={r} onDone={requests.reload} />)}
       </div>
     </>
   );
@@ -39,7 +39,7 @@ function RequestCard({ request: r, onDone }: { request: Request; onDone: () => v
 
   const link = async () => {
     const res = await action.run(
-      () => runWorkflow<{ stock_summary: Summary }>('stock.purchase_request.link_purchase', { purchase_request_id: r.id, odoo_purchase: odoo }),
+      () => runWorkflow<{ stock_summary: Summary }>('stock.purchase_request.link_purchase', { purchase_request_id: r.id, company_id: r.company.id, odoo_purchase: odoo }),
       'Compra registrada',
     );
     if (res) {
@@ -52,7 +52,7 @@ function RequestCard({ request: r, onDone }: { request: Request; onDone: () => v
   const cancel = async () => {
     const reason = window.prompt('Motivo de la cancelación');
     if (!reason) return;
-    if (await action.run(() => runWorkflow('stock.purchase_request.cancel', { purchase_request_id: r.id, reason }))) onDone();
+    if (await action.run(() => runWorkflow('stock.purchase_request.cancel', { purchase_request_id: r.id, company_id: r.company.id, reason }))) onDone();
   };
 
   return (

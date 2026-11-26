@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { authService } from '@/services/auth.service';
 import { extractErrorMessage } from '@/utils/helpers';
 import { ROUTES } from '@/utils/constants';
@@ -37,8 +37,12 @@ export function clearAuthFlash() {
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  // En las pantallas de acceso (/auth/*) no se consulta la sesión: solo en las privadas
+  const isAuthPage = pathname.startsWith('/auth');
+  const sessionChecked = useRef(false);
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!isAuthPage);
   const [error, setError] = useState<string | null>(null);
 
   // No autenticado: no se muestra error
@@ -59,10 +63,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     await loadSession();
   }, [loadSession]);
 
-  // Verificación de sesión al montar (isLoading ya inicia en true)
+  // Verificación de sesión al entrar a una pantalla privada (una sola vez)
   useEffect(() => {
+    if (isAuthPage || sessionChecked.current) return;
+    sessionChecked.current = true;
     loadSession();
-  }, [loadSession]);
+  }, [isAuthPage, loadSession]);
 
   const login = useCallback(async (data: LoginFormData) => {
     try {
