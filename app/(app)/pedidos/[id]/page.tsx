@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { Badge, Button, Card, Field, Input, Message, PageTitle, Select, Table, Td } from '@/components/ui';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { hasPermission } from '@/hooks/auth/usePermissions';
 import { useAction, useWorkflowData } from '@/hooks/useWorkflowData';
+import { useOdooMode } from '@/hooks/useOdooMode';
 import { DocumentList, type DocRow } from '@/components/shared/DocumentList';
 import { runWorkflow, runWorkflowForm } from '@/services/workflow.service';
 import { ROUTES } from '@/utils/constants';
@@ -23,6 +24,10 @@ type Order = {
 };
 type LoadingPoint = { id: number; name: string; company: { name: string }; location: string; suggested: boolean; matching_tags: string[] };
 type Requirement = { item_id: number; item: string; unit: string; pending: string; available: string; in_requests: string; to_buy: string };
+type PendingLine = {
+  id: number; order_id: number; item: string; address: string; qty_pending: string; uses_stock: boolean;
+  stock_available: string | null; loading_address: string | null;
+};
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +35,7 @@ export default function OrderDetailPage() {
   const empresa = useSearchParams().get('empresa');
   const { user } = useAuth();
   const isDispatch = hasPermission(user, 'orders.confirm_order');
+  const canBuild = hasPermission(user, 'trips.build_trip');
   const order = useWorkflowData<Order>('orders.retrieve', { order_id: Number(id), company_id: empresa ? Number(empresa) : undefined });
   const o = order.data;
 
@@ -73,10 +79,12 @@ export default function OrderDetailPage() {
                 </ul>
               </Card>
             </div>
-            {isDispatch && ['draft', 'requested', 'confirmed'].includes(o.state) && (
+            {isDispatch && ['draft', 'requested', 'confirmed', 'in_progress'].includes(o.state) && (
               <div className="space-y-4">
-                {o.state !== 'draft' && <Purchase order={o} onDone={order.reload} />}
-                <LoadingPointPicker order={o} onDone={order.reload} />
+                {/* Confirmado: pasa a la etapa de viaje, con el stock que tiene la empresa */}
+                {canBuild && ['confirmed', 'in_progress'].includes(o.state) && <TripStage order={o} onDone={order.reload} />}
+                {o.state !== 'draft' && <Purchase order={o} onDone={order.reload} onlyIfMissing={o.state !== 'requested'} />}
+                {['draft', 'requested'].includes(o.state) && <LoadingPointPicker order={o} onDone={order.reload} />}
                 {o.state === 'requested' && <Confirm order={o} onDone={order.reload} />}
               </div>
             )}
@@ -88,7 +96,7 @@ export default function OrderDetailPage() {
 }
 
 /** 2-3. Cuánto comprar (pendiente − stock − ya solicitado) y solicitud al facturador */
-function Purchase({ order, onDone }: { order: Order; onDone: () => void }) {
+function Purchase({ order, onDone, onlyIfMissing }: { order: Order; onDone: () => void; onlyIfMissing?: boolean }) {
   const req = useWorkflowData<Requirement[]>('stock.requirements', { company_id: order.company.id });
   const action = useAction();
   const itemIds = new Set(order.lines.map((l) => l.item.id));
@@ -112,6 +120,7 @@ function Purchase({ order, onDone }: { order: Order; onDone: () => void }) {
   };
 
   if (!req.loading && !rows.length && !req.error) return null; // productos sin stock (ej. motos)
+  if (onlyIfMissing && !toBuy.length && !action.success) return null; // ya confirmado y no falta comprar
   return (
     <Card title="Compra (stock)">
       <Table head={['Producto', 'Pendiente', 'Stock', 'Solicitado', 'Comprar']}>
@@ -168,6 +177,15 @@ function LoadingPointPicker({ order, onDone }: { order: Order; onDone: () => voi
 function Confirm({ order, onDone }: { order: Order; onDone: () => void }) {
   const [odoo, setOdoo] = useState('');
   const action = useAction();
+  const mode = useOdooMode(true);
+
+  const simulate = async () => {
+    const sim = await action.run(
+      () => runWorkflow<{ name: string }>('apiOdoo.simulate_purchase', { company_id: order.company.id, order_id: order.id }),
+      'Compra creada en el Odoo simulado',
+    );
+    if (sim) setOdoo(sim.name);
+  };
 
   const confirm = async () => {
     const done = await action.run(() => runWorkflow('orders.confirm', { order_id: order.id, company_id: order.company.id, odoo_purchase: odoo }), 'Pedido confirmado');
@@ -180,6 +198,9 @@ function Confirm({ order, onDone }: { order: Order; onDone: () => void }) {
         <Field label="Compra en Odoo (vacío si es de materiales con stock)">
           <Input value={odoo} onChange={(e) => setOdoo(e.target.value)} placeholder="P00012" />
         </Field>
+        {mode?.simulated && (
+          <Button variant="outline" className="w-full" onClick={simulate} disabled={action.busy}>Simular compra en Odoo</Button>
+        )}
         <Message error={action.error} success={action.success} />
         <Button className="w-full" onClick={confirm} disabled={action.busy}>Confirmar</Button>
       </div>
@@ -209,6 +230,75 @@ function OrderDocuments({ order }: { order: Order }) {
     <Card title="Documentos del pedido">
       <Message error={docs.error} />
       {docs.data && <DocumentList docs={docs.data} canUpload={canUpload} onUpload={upload} />}
+    </Card>
+  );
+}
+
+/** Etapa de viaje: lo pendiente del pedido, el stock que tiene la empresa de cada producto y armar el viaje */
+function TripStage({ order, onDone }: { order: Order; onDone: () => void }) {
+  const router = useRouter();
+  const pending = useWorkflowData<PendingLine[]>('orders.pending_lines', { company_id: order.company.id });
+  const rows = (pending.data ?? []).filter((p) => p.order_id === order.id);
+  const [qty, setQty] = useState<Record<number, string>>({});
+  const action = useAction();
+
+  // Por defecto se carga lo que alcance: lo pendiente o, si usa stock, lo que haya en stock
+  const suggested = (p: PendingLine) =>
+    String(p.uses_stock ? Math.min(Number(p.qty_pending), Number(p.stock_available ?? 0)) : Number(p.qty_pending));
+  const value = (p: PendingLine) => qty[p.id] ?? suggested(p);
+  const toLoad = rows.filter((p) => Number(value(p)) > 0);
+  const short = rows.filter((p) => p.uses_stock && Number(p.stock_available ?? 0) < Number(p.qty_pending));
+
+  const build = async () => {
+    const trip = await action.run(() => runWorkflow<{ id: number }>('trips.build', {
+      company_id: order.company.id,
+      allocations: toLoad.map((p) => ({ order_line_id: p.id, qty: value(p) })),
+    }));
+    if (trip) {
+      onDone();
+      router.push(`${ROUTES.TRIPS}/${trip.id}`);
+    }
+  };
+
+  return (
+    <Card title="Viaje">
+      <Message error={pending.error || action.error} />
+      {!pending.loading && !rows.length ? (
+        <p className="text-sm text-brand-700">
+          Todo el pedido ya va en viajes. <Link href={ROUTES.TRIPS} className="underline">Ver viajes</Link>
+        </p>
+      ) : (
+        <>
+          <p className="mb-2 text-sm"><b>Carga en:</b> {order.address?.name ?? 'sin lugar de cargue'}</p>
+          <Table head={['Producto', 'Pendiente', `Stock de ${order.company.name}`, 'Cargar']}>
+            {rows.map((p) => (
+              <tr key={p.id}>
+                <Td>{p.item}<br /><span className="text-brand-700">{p.address}</span></Td>
+                <Td>{p.qty_pending}</Td>
+                <Td>
+                  {p.uses_stock
+                    ? <b className={Number(p.stock_available ?? 0) < Number(p.qty_pending) ? 'text-red-700' : 'text-green-700'}>{p.stock_available}</b>
+                    : <span className="text-brand-700">no usa stock</span>}
+                </Td>
+                <Td>
+                  <Input type="number" min="0" step="any" className="w-24" value={value(p)}
+                    onChange={(e) => setQty({ ...qty, [p.id]: e.target.value })} />
+                </Td>
+              </tr>
+            ))}
+          </Table>
+          {short.length > 0 && (
+            <p className="mt-2 text-sm text-red-700">
+              Falta stock de {short.map((p) => `${p.item} (hay ${p.stock_available} de ${p.qty_pending})`).join(', ')}.
+              Lo que no alcance queda pendiente para otro viaje; entra al stock cuando se registre la compra de Odoo
+              en <Link href={ROUTES.PURCHASES} className="underline">Compras</Link>.
+            </p>
+          )}
+          <Button className="mt-3 w-full" onClick={build} disabled={!toLoad.length || action.busy}>
+            Armar viaje con esta carga
+          </Button>
+        </>
+      )}
     </Card>
   );
 }
