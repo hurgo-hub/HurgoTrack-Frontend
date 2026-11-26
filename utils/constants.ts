@@ -9,6 +9,7 @@ export const BACKEND_URL = process.env.BACKEND_URL || 'https://hurgotrackback.de
 
 /** Auth del motor (cookies JWT httpOnly: access_token / refresh_token) */
 export const AUTH_ENDPOINTS = {
+  IDENTIFY: '/auth/identify/',
   LOGIN: '/auth/token/',
   LOGOUT: '/auth/logout/',
   REFRESH: '/auth/token/refresh/',
@@ -49,6 +50,12 @@ export const ROUTES = {
   STOCK: '/stock',
   LOADING_POINTS: '/lugares-cargue',
   TRIPS: '/viajes',
+  COMPANIES: '/empresas',
+  MY_COMPANY: '/mi-empresa',
+  CATALOGS: '/catalogos',
+  ROLES: '/roles',
+  USERS: '/usuarios',
+  FLEET: '/flota',
 } as const;
 
 export const PAGINATION = { DEFAULT_PAGE_SIZE: 20 } as const;

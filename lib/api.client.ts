@@ -66,7 +66,9 @@ apiClient.interceptors.response.use(
       }
     }
 
-    if (isDev) {
+    // 401 de /session/status/ = no hay sesión: es la respuesta normal, no un error
+    const expected = error.response?.status === 401 && originalRequest?.url === AUTH_ENDPOINTS.SESSION_STATUS;
+    if (isDev && !expected) {
       console.error('[API Error]', {
         status: error.response?.status,
         data: error.response?.data,

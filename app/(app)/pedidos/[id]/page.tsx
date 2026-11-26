@@ -1,19 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { Badge, Button, Card, Field, Input, Message, PageTitle, Select, Table, Td } from '@/components/ui';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { hasPermission } from '@/hooks/auth/usePermissions';
 import { useAction, useWorkflowData } from '@/hooks/useWorkflowData';
-import { runWorkflow } from '@/services/workflow.service';
+import { DocumentList, type DocRow } from '@/components/shared/DocumentList';
+import { runWorkflow, runWorkflowForm } from '@/services/workflow.service';
 import { ROUTES } from '@/utils/constants';
 
 type OrderLine = {
   id: number; qty: string; qty_assigned: string; qty_delivered: string; qty_pending: string; state_display: string;
-  item: { id: number; name: string; unit: string }; recipient: { name: string };
-  address: { name: string; location: string };
+  item: { id: number; name: string; unit: string };
+  address: { name: string; address: string; location: string };
 };
 type Order = {
   id: number; code: string; state: string; state_display: string; order_date: string; odoo_purchase: string;
@@ -25,9 +26,11 @@ type Requirement = { item_id: number; item: string; unit: string; pending: strin
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
+  // Los ids de pedido se repiten entre empresas (cada una tiene su esquema): Hurgo abre el pedido con ?empresa=<id>
+  const empresa = useSearchParams().get('empresa');
   const { user } = useAuth();
   const isDispatch = hasPermission(user, 'orders.confirm_order');
-  const order = useWorkflowData<Order>('orders.retrieve', { order_id: Number(id) });
+  const order = useWorkflowData<Order>('orders.retrieve', { order_id: Number(id), company_id: empresa ? Number(empresa) : undefined });
   const o = order.data;
 
   return (
@@ -48,7 +51,7 @@ export default function OrderDetailPage() {
                   {o.lines.map((l) => (
                     <tr key={l.id}>
                       <Td>{l.item.name}</Td>
-                      <Td>{l.recipient.name}<br /><span className="text-brand-700">{l.address.name} · {l.address.location}</span></Td>
+                      <Td>{l.address.name}<br /><span className="text-brand-700">{l.address.address} · {l.address.location}</span></Td>
                       <Td>{l.qty}</Td>
                       <Td>{l.qty_assigned}</Td>
                       <Td>{l.qty_delivered}</Td>
@@ -58,6 +61,7 @@ export default function OrderDetailPage() {
                   ))}
                 </Table>
               </Card>
+              <OrderDocuments order={o} />
               <Card title="Historial">
                 <ul className="space-y-1 text-sm">
                   {o.events.map((e) => (
@@ -132,13 +136,13 @@ function Purchase({ order, onDone }: { order: Order; onDone: () => void }) {
 
 /** Lugar de cargue (sugeridos primero por etiqueta) */
 function LoadingPointPicker({ order, onDone }: { order: Order; onDone: () => void }) {
-  const points = useWorkflowData<LoadingPoint[]>('locations.loading_points', { order_id: order.id });
+  const points = useWorkflowData<LoadingPoint[]>('locations.loading_points', { order_id: order.id, order_company_id: order.company.id });
   const [selected, setSelected] = useState(order.address ? String(order.address.id) : '');
   const action = useAction();
 
   const save = async () => {
     const done = await action.run(
-      () => runWorkflow('orders.set_loading_point', { order_id: order.id, address_id: Number(selected) }),
+      () => runWorkflow('orders.set_loading_point', { order_id: order.id, company_id: order.company.id, address_id: Number(selected) }),
       'Lugar de cargue asignado',
     );
     if (done) onDone();
@@ -166,7 +170,7 @@ function Confirm({ order, onDone }: { order: Order; onDone: () => void }) {
   const action = useAction();
 
   const confirm = async () => {
-    const done = await action.run(() => runWorkflow('orders.confirm', { order_id: order.id, odoo_purchase: odoo }), 'Pedido confirmado');
+    const done = await action.run(() => runWorkflow('orders.confirm', { order_id: order.id, company_id: order.company.id, odoo_purchase: odoo }), 'Pedido confirmado');
     if (done) onDone();
   };
 
@@ -179,6 +183,32 @@ function Confirm({ order, onDone }: { order: Order; onDone: () => void }) {
         <Message error={action.error} success={action.success} />
         <Button className="w-full" onClick={confirm} disabled={action.busy}>Confirmar</Button>
       </div>
+    </Card>
+  );
+}
+
+/** Documentos que pide la empresa para el pedido; se exigen al confirmar */
+function OrderDocuments({ order }: { order: Order }) {
+  const { user } = useAuth();
+  const docs = useWorkflowData<DocRow[]>('orders.documents', { order_id: order.id, company_id: order.company.id });
+  const canUpload = !['delivered', 'cancelled'].includes(order.state)
+    && (hasPermission(user, 'orders.add_m_order') || hasPermission(user, 'orders.confirm_order'));
+
+  const upload = async (doc: DocRow, file: File) => {
+    const form = new FormData();
+    form.append('order_id', String(order.id));
+    form.append('company_id', String(order.company.id));
+    form.append('document_key', doc.key ?? '');
+    form.append('files', file);
+    await runWorkflowForm('orders.attach', form);
+    docs.reload();
+  };
+
+  if (!docs.loading && !docs.error && !docs.data?.length) return null;
+  return (
+    <Card title="Documentos del pedido">
+      <Message error={docs.error} />
+      {docs.data && <DocumentList docs={docs.data} canUpload={canUpload} onUpload={upload} />}
     </Card>
   );
 }

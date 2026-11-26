@@ -7,9 +7,10 @@ import { hasPermission } from '@/hooks/auth/usePermissions';
 import { useAction, useWorkflowData } from '@/hooks/useWorkflowData';
 import { runWorkflow } from '@/services/workflow.service';
 
-type Stock = { id: number; company: string; item: string; unit: string; qty_available: string };
+// Hurgo ve el stock de todas las empresas: los ids se repiten entre esquemas, la llave es empresa + id
+type Stock = { id: number; company_id: number; company: string; item: string; unit: string; qty_available: string };
 type Move = {
-  id: number; move_date: string; item: string; move_type_display: string; qty: string; balance: string;
+  id: number; company_id: number; move_date: string; item: string; move_type_display: string; qty: string; balance: string;
   odoo_purchase: string | null; purchase_request: string | null; trip_code: string | null; order_code: string | null; description: string;
 };
 
@@ -27,7 +28,7 @@ export default function StockPage() {
           <Message error={stock.error} />
           <Table head={['Empresa', 'Producto', 'Disponible']}>
             {stock.data?.map((s) => (
-              <tr key={s.id}><Td>{s.company}</Td><Td>{s.item}</Td><Td><b>{s.qty_available}</b> {s.unit}</Td></tr>
+              <tr key={`${s.company_id}-${s.id}`}><Td>{s.company}</Td><Td>{s.item}</Td><Td><b>{s.qty_available}</b> {s.unit}</Td></tr>
             ))}
           </Table>
         </Card>
@@ -36,7 +37,7 @@ export default function StockPage() {
           <Message error={moves.error} />
           <Table head={['Fecha', 'Producto', 'Movimiento', 'Cantidad', 'Saldo', 'Origen']}>
             {moves.data?.map((m) => (
-              <tr key={m.id}>
+              <tr key={`${m.company_id}-${m.id}`}>
                 <Td>{new Date(m.move_date).toLocaleString('es-CO')}</Td>
                 <Td>{m.item}</Td>
                 <Td>{m.move_type_display}</Td>
