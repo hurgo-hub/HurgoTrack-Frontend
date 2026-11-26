@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { hasPermission } from '@/hooks/auth/usePermissions';
 import { useAction, useWorkflowData } from '@/hooks/useWorkflowData';
 import { runWorkflow } from '@/services/workflow.service';
+import { useOdooMode } from '@/hooks/useOdooMode';
 
 type Request = {
   id: number; code: string; state: string; state_display: string; company: { id: number; name: string }; create_date: string;
@@ -36,6 +37,16 @@ function RequestCard({ request: r, onDone }: { request: Request; onDone: () => v
   const [odoo, setOdoo] = useState('');
   const [summary, setSummary] = useState<Summary | null>(null);
   const action = useAction();
+  const mode = useOdooMode(canLink);
+
+  /** Odoo simulado: hace la compra en "Odoo" con lo de la solicitud y deja su referencia lista para registrar */
+  const simulate = async () => {
+    const sim = await action.run(
+      () => runWorkflow<{ name: string }>('apiOdoo.simulate_purchase', { company_id: r.company.id, purchase_request_id: r.id }),
+      'Compra creada en el Odoo simulado: regístrala',
+    );
+    if (sim) setOdoo(sim.name);
+  };
 
   const link = async () => {
     const res = await action.run(
@@ -74,7 +85,8 @@ function RequestCard({ request: r, onDone }: { request: Request; onDone: () => v
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {canLink && ['sent', 'purchased'].includes(r.state) && (
           <>
-            <Input className="max-w-40" placeholder="P00012" value={odoo} onChange={(e) => setOdoo(e.target.value)} />
+            {mode?.simulated && <Button variant="outline" onClick={simulate} disabled={action.busy}>Simular compra en Odoo</Button>}
+            <Input className="max-w-48" placeholder="P00012" value={odoo} onChange={(e) => setOdoo(e.target.value)} />
             <Button onClick={link} disabled={!odoo.trim() || action.busy}>Registrar compra de Odoo</Button>
           </>
         )}
