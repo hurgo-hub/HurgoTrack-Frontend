@@ -3,12 +3,14 @@ import { AUTH_ENDPOINTS } from '@/utils/constants';
 import type { LoginFormData, User } from '@/types';
 
 export interface IdentifyResult {
-  /** Marca de la empresa del usuario; null si no aplica (la respuesta no revela si el usuario existe) */
+  /** El usuario tal como está en la base */
+  username?: string;
+  /** Marca de su empresa; null para Hurgo o si tiene varias empresas */
   company: { name: string; color: string | null; slogan: string | null } | null;
 }
 
 export const authService = {
-  /** Paso 1 del login: respuesta neutra con la marca de la empresa del usuario */
+  /** Paso 1 del login: valida el usuario en la base (404 no existe, 403 desactivado) y trae su marca */
   identify: async (username: string): Promise<IdentifyResult> => {
     const response = await apiClient.post(AUTH_ENDPOINTS.IDENTIFY, { username }, { skipAuthRefresh: true } as object);
     return response.data;

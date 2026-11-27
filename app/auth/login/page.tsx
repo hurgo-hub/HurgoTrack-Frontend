@@ -13,8 +13,9 @@ const buttonClass =
 
 /**
  * Login en dos pasos:
- * 1. Usuario → /auth/identify/ (respuesta neutra: si aplica, muestra la empresa del usuario).
- * 2. Contraseña. Si el usuario no existe o está inactivo se ve igual; el error llega al ingresar.
+ * 1. Usuario → /auth/identify/: se valida en la base. Si no existe o está desactivado se queda aquí
+ *    con el mensaje; si existe, muestra la marca de su empresa (si tiene una).
+ * 2. Contraseña.
  */
 export default function LoginPage() {
   const { login, error, clearError } = useAuth();
@@ -31,10 +32,14 @@ export default function LoginPage() {
     try {
       setIdentity(await authService.identify(username.trim()));
     } catch (err) {
-      const status = (err as { response?: { status?: number } }).response?.status;
-      // Si el paso 1 falla (límite de intentos, red) se sigue sin marca: el login decide
-      if (status === 429) setStepError('Demasiados intentos. Espera un minuto e intenta de nuevo.');
-      else setIdentity({ company: null });
+      const response = (err as { response?: { status?: number; data?: { detail?: string } } }).response;
+      if (response?.status === 404 || response?.status === 403) {
+        setStepError(response.data?.detail ?? 'El usuario no existe.'); // no pasa a la contraseña
+      } else if (response?.status === 429) {
+        setStepError('Demasiados intentos. Espera un minuto e intenta de nuevo.');
+      } else {
+        setStepError('No se pudo verificar el usuario. Revisa la conexión e intenta de nuevo.');
+      }
     } finally {
       setSending(false);
     }
@@ -77,7 +82,7 @@ export default function LoginPage() {
             <div>
               <label htmlFor="username" className="mb-1.5 block text-sm font-medium">Usuario</label>
               <input id="username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false}
-                autoFocus value={username} onChange={(e) => setUsername(e.target.value)} required className={inputClass} />
+                autoFocus value={username} onChange={(e) => { setUsername(e.target.value); setStepError(null); }} required className={inputClass} />
             </div>
             {stepError && (
               <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{stepError}</p>
