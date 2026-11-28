@@ -14,7 +14,8 @@ const buttonClass =
 /**
  * Login en dos pasos:
  * 1. Usuario → /auth/identify/: se valida en la base. Si no existe o está desactivado se queda aquí
- *    con el mensaje; si existe, muestra la marca de su empresa (si tiene una).
+ *    con el mensaje; si existe, muestra la marca de su empresa (si tiene una). Un conductor no entra:
+ *    usa la app Hurgo Conductor en su celular.
  * 2. Contraseña.
  */
 export default function LoginPage() {
@@ -77,7 +78,15 @@ export default function LoginPage() {
         <h1 className="mt-8 text-xl font-semibold">Inicia sesión</h1>
         <p className="mt-1 text-sm text-brand-700">Sabe dónde va la carga sin tener que llamar a nadie.</p>
 
-        {!identity ? (
+        {identity?.driver_only ? (
+          <div className="mt-6 space-y-4">
+            <p role="alert" className="rounded-lg border border-brand-200 bg-brand-200/30 px-3 py-3 text-sm">
+              <b>{username.trim()}</b> es conductor: los conductores trabajan desde la app <b>Hurgo Conductor</b> en
+              el celular (ahí le llegan sus viajes).
+            </p>
+            <button type="button" onClick={back} className={buttonClass}>Usar otro usuario</button>
+          </div>
+        ) : !identity ? (
           <form onSubmit={next} className="mt-6 space-y-4" noValidate>
             <div>
               <label htmlFor="username" className="mb-1.5 block text-sm font-medium">Usuario</label>

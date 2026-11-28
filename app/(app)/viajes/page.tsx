@@ -15,7 +15,7 @@ type Pending = {
   id: number; order_code: string; company_id: number; company: string; item: string; address: string;
   qty_pending: string; loading_address: string | null; uses_stock: boolean; stock_available: string | null;
 };
-type TripRow = { id: number; code: string; state: string; create_date: string };
+type TripRow = { id: number; code: string; state: string; create_date: string; driver_response: string; driver_response_note: string };
 
 const STATES: Record<string, string> = {
   draft: 'Armando', assigned: 'Asignado', in_route: 'En camino', delivering: 'En reparto', closed: 'Cerrado', cancelled: 'Cancelado',
@@ -24,7 +24,7 @@ const STATES: Record<string, string> = {
 export default function TripsPage() {
   const { user } = useAuth();
   const trips = useWorkflowData<TripRow[]>('trips.list', {
-    data: { fields: ['id', 'code', 'state', 'create_date'], order_by: ['-id'], limit: 100 },
+    data: { fields: ['id', 'code', 'state', 'create_date', 'driver_response', 'driver_response_note'], order_by: ['-id'], limit: 100 },
   });
 
   return (
@@ -34,12 +34,18 @@ export default function TripsPage() {
         {hasPermission(user, 'trips.build_trip') && <BuildTrip />}
         <Card title="Viajes">
           <Message error={trips.error} />
-          <Table head={['Código', 'Creado', 'Estado']}>
+          <Table head={['Código', 'Creado', 'Estado', 'Conductor']}>
             {trips.data?.map((t) => (
               <tr key={t.id}>
                 <Td><Link href={`${ROUTES.TRIPS}/${t.id}`} className="font-semibold hover:underline">{t.code}</Link></Td>
                 <Td>{new Date(t.create_date).toLocaleString('es-CO')}</Td>
                 <Td><Badge>{STATES[t.state] ?? t.state}</Badge></Td>
+                <Td>
+                  {t.state === 'draft' && t.driver_response === 'rejected' && <span className="text-red-700">Rechazado por {t.driver_response_note}</span>}
+                  {t.state === 'assigned' && (t.driver_response === 'accepted'
+                    ? <span className="text-green-700">Aceptado</span>
+                    : <span className="text-amber-700">Esperando que acepte</span>)}
+                </Td>
               </tr>
             ))}
           </Table>

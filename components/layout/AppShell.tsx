@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { BrandLogo } from '@/components/layout/BrandLogo';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { hasPermission, isAdmin } from '@/hooks/auth/usePermissions';
+import { hasPermission, isAdmin, isDriverOnly } from '@/hooks/auth/usePermissions';
 import { ROUTES } from '@/utils/constants';
 import { cn } from '@/utils/helpers';
 
@@ -109,7 +109,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </header>
         {open && <div className="border-b border-brand-200 bg-white px-3 py-4 md:hidden">{nav}</div>}
-        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-6">
+          {isDriverOnly(user) ? (
+            <div className="mx-auto max-w-md rounded-xl border border-brand-200 bg-white p-6 text-center">
+              <p className="font-semibold">Los conductores trabajan desde la app Hurgo Conductor</p>
+              <p className="mt-1 text-sm text-brand-700">Ahí te llegan los viajes para aceptarlos, salir a ruta y entregar.</p>
+              <button type="button" onClick={logout} className="mt-4 text-sm font-semibold text-brand-900 hover:underline">Salir</button>
+            </div>
+          ) : children}
+        </main>
       </div>
     </div>
   );

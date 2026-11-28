@@ -5,6 +5,8 @@ import type { LoginFormData, User } from '@/types';
 export interface IdentifyResult {
   /** El usuario tal como está en la base */
   username?: string;
+  /** Solo conductor: entra por la app del celular, no por la web */
+  driver_only?: boolean;
   /** Marca de su empresa; null para Hurgo o si tiene varias empresas */
   company: { name: string; color: string | null; slogan: string | null } | null;
 }

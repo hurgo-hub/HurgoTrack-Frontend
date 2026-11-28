@@ -19,6 +19,7 @@ type Stop = {
 type Trip = {
   id: number; code: string; state: string; state_display: string; company: { name: string }; origin_address: string | null;
   vehicle: string | null; driver: { name: string } | null; lines: Stop[];
+  driver_response: '' | 'accepted' | 'rejected'; driver_response_date: string | null; driver_response_note: string;
   events: { id: number; name: string; description: string; event_date: string }[];
 };
 type Resources = { vehicles: { id: number; name: string }[]; drivers: { id: number; name: string }[] };
@@ -29,7 +30,6 @@ export default function TripDetailPage() {
   const trip = useWorkflowData<Trip>('trips.retrieve', { trip_id: Number(id) });
   const t = trip.data;
   const isDispatch = hasPermission(user, 'trips.assign_trip');
-  const isDriver = hasPermission(user, 'trips.drive_trip');
 
   return (
     <>
@@ -43,20 +43,20 @@ export default function TripDetailPage() {
               <Card title="Paradas" actions={<Badge>{t.state_display}</Badge>}>
                 <p className="mb-3 text-sm">
                   <b>Vehículo:</b> {t.vehicle ?? 'sin asignar'} · <b>Conductor:</b> {t.driver?.name ?? 'sin asignar'}
+                  {' · '}<DriverResponse trip={t} />
                 </p>
-                <Table head={['#', 'Destino', 'Carga', 'Estado', '']}>
+                <Table head={['#', 'Destino', 'Carga', 'Estado']}>
                   {t.lines.map((s) => (
                     <tr key={s.id}>
                       <Td>{s.sequence}</Td>
                       <Td>{s.address.name}<br /><span className="text-brand-700">{s.address.address} · {s.address.location}</span></Td>
                       <Td>{s.items.map((i) => <div key={i.order_line_trip_id}>{i.item} × {i.qty} <span className="text-brand-700">({i.order_code})</span></div>)}</Td>
                       <Td><Badge>{s.state_display}</Badge></Td>
-                      <Td>{isDriver && ['in_route', 'delivering'].includes(s.state) && <Deliver tripId={t.id} stop={s} onDone={trip.reload} />}</Td>
                     </tr>
                   ))}
                 </Table>
               </Card>
-              <TripDocuments trip={t} canUpload={(isDispatch || isDriver) && !['closed', 'cancelled'].includes(t.state)} />
+              <TripDocuments trip={t} canUpload={isDispatch && !['closed', 'cancelled'].includes(t.state)} />
               <Card title="Historial">
                 <ul className="space-y-1 text-sm">
                   {t.events.map((e) => (
@@ -70,7 +70,6 @@ export default function TripDetailPage() {
             </div>
             <div className="space-y-4">
               {isDispatch && ['draft', 'assigned'].includes(t.state) && <Assign trip={t} onDone={trip.reload} />}
-              {isDriver && t.state === 'assigned' && <Depart trip={t} onDone={trip.reload} />}
             </div>
           </div>
         </>
@@ -112,38 +111,15 @@ function Assign({ trip, onDone }: { trip: Trip; onDone: () => void }) {
   );
 }
 
-function Depart({ trip, onDone }: { trip: Trip; onDone: () => void }) {
-  const action = useAction();
-  const depart = async () => {
-    if (await action.run(() => runWorkflow('trips.depart', { trip_id: trip.id }))) onDone();
-  };
-  return (
-    <Card title="Conductor">
-      <Message error={action.error} />
-      <Button className="w-full" onClick={depart} disabled={action.busy}>Salir a ruta</Button>
-    </Card>
-  );
-}
-
-/** Entrega con foto de la remisión firmada */
-function Deliver({ tripId, stop, onDone }: { tripId: number; stop: Stop; onDone: () => void }) {
-  const [file, setFile] = useState<File | null>(null);
-  const action = useAction();
-  const deliver = async () => {
-    if (!file) return;
-    const form = new FormData();
-    form.append('trip_id', String(tripId));
-    form.append('trip_line_id', String(stop.id));
-    form.append('files', file);
-    if (await action.run(() => runWorkflowForm('trips.deliver', form))) onDone();
-  };
-  return (
-    <div className="space-y-1">
-      <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="max-w-48 text-xs" />
-      <Button onClick={deliver} disabled={!file || action.busy}>Entregar</Button>
-      <Message error={action.error} />
-    </div>
-  );
+/** Respuesta del conductor en la app: esperando, aceptado o rechazado (con el motivo) */
+function DriverResponse({ trip }: { trip: Pick<Trip, 'state' | 'driver_response' | 'driver_response_note'> }) {
+  if (trip.driver_response === 'rejected' && trip.state === 'draft') {
+    return <span className="text-red-700">Rechazado por {trip.driver_response_note}</span>;
+  }
+  if (trip.state !== 'assigned') return null;
+  return trip.driver_response === 'accepted'
+    ? <span className="text-green-700">Aceptado en la app</span>
+    : <span className="text-amber-700">Esperando que el conductor acepte</span>;
 }
 
 type TripDocs = { loading: DocRow[]; delivery: { trip_line_id: number; sequence: number; documents: DocRow[] }[] };

@@ -11,6 +11,11 @@ export const hasPermission = (user: User | null | undefined, permission: string 
   return !!user.permissions?.includes(permission);
 };
 
+/** Solo conductor (sin permisos de despacho): trabaja en la app del celular, no en la web */
+export const isDriverOnly = (user: User | null | undefined) =>
+  !!user && !isAdmin(user) && !!user.permissions?.includes('trips.drive_trip')
+  && !user.permissions?.includes('trips.view_all_trip');
+
 export function usePermissions() {
   const { user } = useAuth();
   return {
